@@ -1,6 +1,6 @@
 const Booking = require("../models/Booking");
 const Vehicle = require("../models/Vehicle");
-const User = require("../models/User");
+
 
 exports.createBooking = async(req, res)=>{
     try {
@@ -14,7 +14,7 @@ exports.createBooking = async(req, res)=>{
         }
         
         const booking = await Booking.create({
-            User: req.user.id,
+            user: req.user.id,
             vehicle,
             startDate,
             endDate,
@@ -33,8 +33,8 @@ exports.getAllBookings = async(req, res)=>{
             return res.status(403).json({message: "Only Admin can see all bookings"})
         }
         const getbookings = await Booking.find()
-        .populate("User", "name email")
-        .populate("Vehicle", "name registrationNumber");
+        .populate("user", "name email")
+        .populate("vehicle", "name registrationNumber");
         res.json(getbookings);
     } catch(error){
         res.status(500).json({message: error.message});

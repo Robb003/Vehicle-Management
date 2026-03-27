@@ -30,7 +30,7 @@ exports.Signup = async(req, res)=>{
 
 //login endpoint logic
 
-exports.login = async(req, res)=>{
+exports.Login = async(req, res)=>{
     try {
         const {email, password} = req.body;
         const user = await User.findOne({email: email.toLowerCase() });

@@ -28,11 +28,6 @@ exports.addVehicle = async(req, res) => {
 exports.getAllVehicles = async(req, res)=> {
     try{
         let query = {};
-        if (req.user.role ===("Customer")){
-            query = {customer: req.user.id}
-        } else if(req.user.role ==="Admin"){
-            query ={Admin: req.user.id}
-        }
         const getvehicle = await Vehicle.find(query)
         res.json(getvehicle);
     } catch(error){
@@ -44,8 +39,8 @@ exports.updateVehicle = async(req, res)=>{
         if(req.user.role !== "Admin"){
           return res.status(403).json({message: "Only Admin  can update a vehicle"})
         }
-        const updateVehicle = await Vehicle.findByIdAndUpdate(req.params.id, req.body, {new: true});
-        res.json(updateVehicle);
+        const vehicle = await Vehicle.findByIdAndUpdate(req.params.id, req.body, {new: true});
+        res.json(vehicle);
     } catch(error){
         res.status(500).json({message: error.message});
     }
