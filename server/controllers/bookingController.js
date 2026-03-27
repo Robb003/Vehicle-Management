@@ -1,5 +1,5 @@
 const Booking = require("../models/Booking");
-const vehicle = require("../models/Vehicle");
+const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 
 exports.createBooking = async(req, res)=>{
@@ -7,9 +7,14 @@ exports.createBooking = async(req, res)=>{
         if(req.user.role !=="Customer"){
             return res.status(403).json({message: "Only a customer can create a booking"});
         }
-        const {User, vehicle, startDate, endDate, bookingReason}= req.body
+        const { vehicle, startDate, endDate, bookingReason}= req.body;
+        const vehicleExist = await Vehicle.findById(vehicle);
+        if(!vehicleExist){
+            return res.status(404).json({message: "vehicle not found"})
+        }
+        
         const booking = await Booking.create({
-            User,
+            User: req.user.id,
             vehicle,
             startDate,
             endDate,
@@ -27,7 +32,9 @@ exports.getAllBookings = async(req, res)=>{
         if(req.user.role !=="Admin"){
             return res.status(403).json({message: "Only Admin can see all bookings"})
         }
-        const getbookings = await Booking.find().populate()
+        const getbookings = await Booking.find()
+        .populate("User", "name email")
+        .populate("Vehicle", "name registrationNumber");
         res.json(getbookings);
     } catch(error){
         res.status(500).json({message: error.message});
@@ -47,7 +54,7 @@ exports.acceptBooking =async (req, res)=>{
         await booking.save();
         res.json(booking);
     } catch(error){
-        res.starus(500).json({message: error.message});
+        res.status(500).json({message: error.message});
     }
 };
 
