@@ -1,12 +1,19 @@
 const Booking = require("../models/Booking");
 const User = require("../models/User");
+const Vehicle = require("../models/Vehicle");
 
 module.exports=(io)=>{
     io.on("connection", (socket)=>{
         console.log(`Socket connected: ${socket.id}`);
+        //Admin joins adminRoom
         socket.on("joinAdmin", ()=>{
             socket.join("adminRoom");
             console.log("Admin joined adminroom");
+        });
+        //Customer joins a customerRoom
+        socket.on("joincustomer", (userId)=>{
+            socket.join(userId);
+            console.log(`customer ${userId} joined their room`);
         });
         socket.on("sendBooking", async(data)=>{
             try{
@@ -41,13 +48,18 @@ module.exports=(io)=>{
                     bookingId,
                     {status: "Accepted"},
                     {new: true}
-                );
+                ).populate("vehicle customer");
                 if(!booking)return;
-
+                //update vehicle availability to already booked
+                booking.vehicle.status = "Already Booked";
+                await booking.vehicle.save();
+                //notify the customer of booking status
                 io.to(booking.customer.toString()).emit("notification", {
                     message: "your booking has been approved",
                     bookingId: booking._id
                 });
+                // emit updated vehicle info to every customer
+                io.emit("vehicle:updated", booking.vehicle);
             } catch(error){
                 console.error("Accept booking error.", error.message);
             }
@@ -60,12 +72,19 @@ module.exports=(io)=>{
                 bookingId,
                 {status: "Rejected"},
                 {new: true}
-            );
+            ).populate("vehicle customer");
             if(!booking) return;
+            //update vehicle availability
+            booking.vehicle.status = "Availabe";
+            await booking.vehicle.save();
+
+            //notify customer of their booking status
             io.to(booking.customer.toString()).emit("notification", {
                 message: "Your Booking has been rejected",
                 bookingId: booking._id
             });
+            //emit vehicle info to every customer
+            io.emit("vehicle:updated", booking.vehicle);
             } catch(error) {
                 console.error("Reject booking error", error.message);
             }
