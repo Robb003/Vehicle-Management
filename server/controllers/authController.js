@@ -6,7 +6,7 @@ const User = require("../models/User");
 
 exports.Signup = async(req, res)=>{
     try {
-        const {name, phoneNumber, email, password, location} = req.body;
+        const {name, phoneNumber, email, password, location, role} = req.body;
         const exist = await User.findOne({email: email.toLowerCase() });
         if(exist){
             return res.status(400).json({message: "user already exist"});
@@ -17,7 +17,7 @@ exports.Signup = async(req, res)=>{
             phoneNumber,
             email,
             password: hashed,
-            role: "Customer",
+            role: role || "Customer",
             location
         });
 

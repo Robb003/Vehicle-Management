@@ -16,7 +16,7 @@ exports.protect = (req, res, next)=>{
 };
 //authorize midlleware checks roles
 exports.authorize = (roles)=>{
-    return(req, res, nest)=>{
+    return(req, res, next)=>{
         if(!roles.includes(req.user.role)){
             return res.status(403).json({message: "Forbiden"});
         }

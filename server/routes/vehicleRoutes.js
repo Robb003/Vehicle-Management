@@ -8,4 +8,4 @@ router.get("/", protect, getAllVehicles);
 router.put("/:id", protect, authorize(["Admin"]), updateVehicle);
 router.delete("/:id", protect, authorize(["Admin"]), deleteVehicle);
 
-module.exports = router
+module.exports = router;
