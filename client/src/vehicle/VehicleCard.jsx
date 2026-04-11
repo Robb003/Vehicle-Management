@@ -6,7 +6,7 @@ export default function VehicleCard({vehicle, onDelete, onEdit}){
     return(
     <Card className="relative animate-fade">
         <CardHeader>
-            <CardTitle className="text- lg font-semibold">{vehicle.name}</CardTitle>
+            <CardTitle className="text-lg font-semibold">{vehicle.name}</CardTitle>
         </CardHeader>
         <CardContent>
             <p className="text-sm dark:text-zinc-300">

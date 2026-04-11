@@ -56,7 +56,7 @@ export default function BookVehicle({onAdd}){
 
     return (
         <div className="flex justify-center mt-6">
-            <Card className="w-[400]">
+            <Card className="w-[400px]">
                 <CardHeader>
                     <CardTitle>Book A Vehicle</CardTitle>
                 </CardHeader>
@@ -98,7 +98,7 @@ export default function BookVehicle({onAdd}){
                         />
                         <Input
                             type="text"
-                            value="bookingReason"
+                            value={bookingReason}
                             onChange={(e)=>setBookingReason(e.target.value)}
                             placeholderText="Enter booking reason"
                             required
