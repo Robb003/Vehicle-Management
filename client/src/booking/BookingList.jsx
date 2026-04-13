@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 
 
+
 export default function BookingList(){
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);

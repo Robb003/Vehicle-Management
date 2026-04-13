@@ -8,6 +8,7 @@ import API from "../Services/api";
 
 export default function BookVehicle({onAdd}){
     const [vehicles, setVehicles] = useState([]);
+    const [bookings, setBookings] = useState([]);
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
     const [selectedVehicle, setSelectedVehicle] = useState("");
@@ -16,15 +17,26 @@ export default function BookVehicle({onAdd}){
 
     //fetch vehicles form backend
     useEffect(()=>{
-        fetch('http://localhost:5000/api/vehicles')
-        .then(res=>res.json())
-        .then(data=>{
-            setVehicles(data);
-            setLoading(false);
-        })
-        .catch(error => console.error(error));
+        const fetchData = async()=>{
+            try {
+                const v = await API.get("/vehicles");
+                const b = await API.get("/bookings");
+                setVehicles(v.data);
+                setBookings(b.data);
+            } catch(err) {
+                console.error(err);
+            }
+        };
+        fetchData();
     }, []);
     if (loading)return<p>Loading Vehicles...</p>
+
+    //check if vehicle is booked
+    const isBooked = (vehicleId)=> {
+        return bookings.some(
+            b => b.vehicleId === vehicleId && b.status !== "rejected"
+        );
+    };
 
     //creating a booking
 
@@ -54,61 +66,100 @@ export default function BookVehicle({onAdd}){
         };
     };
 
-    return (
-        <div className="flex justify-center mt-6">
-            <Card className="w-[400px]">
-                <CardHeader>
-                    <CardTitle>Book A Vehicle</CardTitle>
-                </CardHeader>
-                <form onSubmit={handleSubmit}>
+    return(
+        <div className="space-y-6">
+
+            //vehicle card
+            {!selectedVehicle && (
+                <div className="grid md:grid-cols-3 gap-6">
+                    {vehicles.map(vehicle => {
+                        const booked = isBooked(vehicle._id);
+
+                        return (
+                            <Card key={vehicle._id} className="p-4 shadow-md">
+
+                                <CardHeader>
+                                    <CardTitle>{vehicle.name}</CardTitle>
+                                </CardHeader>
+
+                                <CardContent className="space-y-2">
+                                    <p className="text-gray-500">{vehicle.type}</p>
+                                    <p className="font-bold">
+                                        KES {vehicle.price}
+                                    </p>
+
+                                    <p className={`font-bold ${
+                                        booked ? "text-red-500" : "text-green-500"
+                                    }`}>
+                                        {booked ? "Booked" : "Available"}
+                                    </p>
+
+                                    <Button
+                                        disabled={booked}
+                                        onClick={() => setSelectedVehicle(vehicle)}
+                                        className="w-full"
+                                    >
+                                        {booked ? "Unavailable" : "Book Now"}
+                                    </Button>
+                                </CardContent>
+
+                            </Card>
+                        );
+                    })}
+                </div>
+            )}
+
+            //booking form
+            {selectedVehicle && (
+                <Card className="w-[400px] mx-auto p-4 shadow-lg">
+
+                    <CardHeader>
+                        <CardTitle>
+                            Book {selectedVehicle.name}
+                        </CardTitle>
+                    </CardHeader>
+
                     <CardContent className="space-y-3">
-                        <label className="text-sm font-medium">Selct Vehicle</label>
-                        <select
-                            value={selectedVehicle}
-                            onChange={(e)=>setSelectedVehicle(e.target.value)}
-                            className="w-full border p-2 rounded"
-                            required
-                        >
-                            <option value="">--choose a vehicle--</option>
-                            {vehicles.map(v=>(
-                                <option key={v.id} value={v.id}>{v.name}</option>
-                            ))}
-                        </select>
+
                         <label>Start Date</label>
                         <DatePicker
                             selected={startDate}
-                            onChange={(date)=>setStartDate(date)}
-                            selectsStart
-                            startDate={startDate}
-                            endDate={endDate}
-                            placeholderText="Select start date"
+                            onChange={setStartDate}
                             className="w-full border p-2 rounded"
-                            required
                         />
+
                         <label>End Date</label>
                         <DatePicker
                             selected={endDate}
-                            onChange={(date)=>setEndDate(date)}
-                            selectsEnd
-                            startDate={startDate}
-                            endDate={endDate}
-                            placeholderText="Select end date"
+                            onChange={setEndDate}
                             className="w-full border p-2 rounded"
-                            required
                         />
+
                         <Input
-                            type="text"
                             value={bookingReason}
-                            onChange={(e)=>setBookingReason(e.target.value)}
-                            placeholderText="Enter booking reason"
-                            required
+                            onChange={(e) => setBookingReason(e.target.value)}
+                            placeholder="Booking reason"
                         />
-                        <Button type="submit" className="w-full">
-                             {loading ? "Booking..." : "Book Vehicle"}
+
+                        <Button
+                            onClick={handleSubmit}
+                            className="w-full"
+                        >
+                            {loading ? "Booking..." : "Confirm Booking"}
                         </Button>
+
+                        <Button
+                            variant="outline"
+                            onClick={() => setSelectedVehicle(null)}
+                            className="w-full"
+                        >
+                            Back
+                        </Button>
+
                     </CardContent>
-                </form>
-            </Card>
+                </Card>
+            )}
+
         </div>
-    )
+    );
 }
