@@ -26,6 +26,18 @@ exports.createBooking = async(req, res)=>{
         res.status(500).json({message: error.message});
     }
 };
+exports.getMyBookings = async(req, res)=>{
+    try {
+        if(req.user.role !=="Customer"){
+            return res.status(403).json({message: "Only a customer can get a booking"});
+        }
+        const getMyBookings = await Booking.find({user: req.user.id})
+        .populate("vehicle");
+        res.json(getMyBookings);
+    } catch(error){
+        res.status(500).json({message: error.message});
+    }
+}
 
 exports.getAllBookings = async(req, res)=>{
     try {

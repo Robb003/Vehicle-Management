@@ -42,6 +42,10 @@ export const getAllBookings = ()=>{
     return API.get("/bookings");
 };
 
+export const getMyBookings =()=>{
+    return API.get("/bookings/me");
+}
+
 export const acceptBooking = (bookingId) =>{
     return API.put(`/booking/accept/${bookingId}`);
 };

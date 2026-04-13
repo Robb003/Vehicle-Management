@@ -5,19 +5,28 @@ import { Button } from "@/components/ui/button";
 
 
 export default function BookingList(){
-    const [bookings, setBookingS] = useState([]);
+    const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    //fetch all bookings 
-        const fetchBookings = async() =>{
-            try {
-                const res = await API.get(`/bookings`);
-                setBookingS(res.data);
-                setLoading(false);
-            } catch (err){
-                console.error(err);
-            }
-        };
+    //fetch bookings
+
+    const fetchBookings = async()=>{
+        try {
+            const user = JSON.parse(localStorage.getItem("user"));
+
+            const url = 
+                user.role ==="Admin"
+                ? "/bookings"
+                : "/bookings/me";
+            
+            const res = await API.get(url);
+            setBookings(res.data);
+        } catch(err) {
+            console.error(err)
+        } finally {
+            setLoading(false);
+        }
+    }
 
         useEffect(()=> {
             fetchBookings();
@@ -28,7 +37,7 @@ export default function BookingList(){
 
          const handleAcceptBooking = async(id)=>{
             try {
-                const res = await API.put(`/bookings/${id}/accept`);
+                const res = await API.put(`/bookings/accept/${id}`);
                 fetchBookings();
             } catch(err) {
                 console.error(err);
@@ -37,7 +46,7 @@ export default function BookingList(){
 
          const handleRejectBooking = async(id)=>{
             try {
-                const res =await API.put(`/bookings/${id}/reject`);
+                const res =await API.put(`/bookings/reject/${id}`);
                 fetchBookings();
             } catch(err) {
                 console.error(err);
@@ -45,7 +54,7 @@ export default function BookingList(){
          };
 
          return(
-            <div className="grid gap-4 md:grid-cols-2 lg:grid--cols p-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 p-4">
                 {bookings.map((booking)=> (
                     <Card key={booking._id} className="shadow-md rounded-2xl">
                         <CardHeader>
