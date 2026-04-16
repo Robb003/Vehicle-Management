@@ -5,13 +5,14 @@ import { Card, CardHeader, CardTitle, CardContent, CardContent } from "@/compone
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css"
 import API from "../Services/api";
+import socket from "../Services/socket";
 
 export default function BookVehicle({onAdd}){
     const [vehicles, setVehicles] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
-    const [selectedVehicle, setSelectedVehicle] = useState("");
+    const [selectedVehicle, setSelectedVehicle] = useState(null);
     const [bookingReason, setBookingReason] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -43,17 +44,24 @@ export default function BookVehicle({onAdd}){
 
     const handleSubmit=async(e)=>{
         e.preventDefault();
+
+        const user =JSON.parse(localStorage.getItem("user"));
         if(!startDate || !endDate || !bookingReason){
             return alert("all fields required");
         } 
+        if(!user){
+            return alert("User not logged in");
+        }
         setLoading(true);
         try {
-            const res = await API.post("/booking", {vehicleId: selectedVehicle, startDate: startDate.toString(), endDate: endDate.toString(), bookingReason}, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
+            //send booking vie socket
+            socket.emit("sendBooking", {
+                customerId: user._id,
+                vehicleId: selectedVehicle._id,
+                startDate,
+                endDate
+            });
+
         onAdd([startDate, endDate, bookingReason]);
         setStartDate(null);
         setEndDate(null);
