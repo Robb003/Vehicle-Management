@@ -22,7 +22,7 @@ app.use(cors());
 app.use(express.json());
 //routes
 app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/booking", require("./routes/bookingRoutes"));
+app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/vehicle", require("./routes/vehicleRoutes"));
 
 //connect DB

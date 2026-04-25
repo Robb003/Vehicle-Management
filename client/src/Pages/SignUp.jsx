@@ -1,10 +1,10 @@
 import { useState } from "react";
-import {useNavigate, Link} from "react-router-dom";
+import { useNavigate, Link} from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Se}
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import API from "../Services/api";
+import {  useAuthContext } from "@/Context/authContext";
 
 export default function Signup() {
     const [name, setName] = useState("");
@@ -17,6 +17,8 @@ export default function Signup() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    const {setUser, setToken, setRole: setUserRole} = useAuthContext();
+
     const handleSignup = async()=>{
         if(!name || !phoneNumber || !email || !password || !role || !location ){
             setError("All fields required");
@@ -26,10 +28,19 @@ export default function Signup() {
 
         //call api
         try{
-            const res = await API.post("/auth/signup", {name, phoneNumber, email, password, role, location});
-            localStorage.setItem("token", res.data.token);
+            const res = await API.post("auth/signup", {name, phoneNumber, email, password, role, location});
+            const {token, user} = res.data;
+
+            setUser(user);
+            setToken(token);
+            setUserRole(user.role);
+            localStorage.setItem("token", token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+            localStorage.setItem("role", user.role);
+
+
             setError("");
-            navigate("/dashboard");
+            navigate("/");
         } catch(err) {
             alert(err.response?.data?.message || "signup failed");
         } finally {
@@ -43,6 +54,7 @@ export default function Signup() {
                     <CardTitle className="text-center text-2xl font-bold">Signup</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
                     <Input
                         type="text"
                         placeholder="name"
@@ -69,12 +81,18 @@ export default function Signup() {
                         value={password}
                         onChange= {(e)=>setPassword(e.target.value)}
                     />
-                    <Input
-                        type="text"
-                        placeholder="select role"
-                        value={role}
-                        onChange= {(e)=>setRole(e.target.value)}
-                    />
+
+                    <div className="space-y-1">
+                        <select
+                            value={role}
+                            onChange={(e)=>setRole(e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background"
+                        >
+                            <option value="" disabled>Select Role</option>
+                            <option value="Customer">Customer</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
                     <Input
                         type="text"
                         placeholder="enter your location"
@@ -88,7 +106,7 @@ export default function Signup() {
                         disabled={loading}
                         className="w-full"
                     >
-                        {loading ? "Signing up..." : "Sign in"}
+                        {loading ? "Signing up..." : "Sign up"}
                     </Button>
                     <p className="text-center mt-2">
                          have an account?{' '}
