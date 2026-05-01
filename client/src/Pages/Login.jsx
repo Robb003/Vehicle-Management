@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import API from "../Services/api.js";
-import { useAuthContext } from "@/Context/authContext.jsx";
+import { useAuthContext } from "../Context/authContext.jsx";
 
 
 export default function Login() {
