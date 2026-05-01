@@ -1,8 +1,8 @@
 import axios from "axios";
 import {io} from "socket.io-client";
 
-const BackenedBaseUrl = "http://localhost:5000";
-const APIBaseUrl = "http://localhost:5000/api/";
+const BackenedBaseUrl = "https://vehicle-management-nunj.onrender.com";
+const APIBaseUrl = "https://vehicle-management-nunj.onrender.com/api/";
 
 const API =axios.create({
     baseURL: APIBaseUrl
