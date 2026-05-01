@@ -10,31 +10,32 @@ export default function BookingList() {
 
     const fetchBookings = useCallback(async () => {
         try {
+            setLoading(true);
             const userData = localStorage.getItem("user");
-            const token = localStorage.getItem("token"); // Get token for Auth
+            const token = localStorage.getItem("token");
 
-            if (!userData) {
+            if (!userData || !token) {
                 setLoading(false);
                 return;
             }
             
             const user = JSON.parse(userData);
-            const role = user.role || "";
-            setUserRole(role);
+            setUserRole(user.role || "");
 
-            const url = role === "Admin" ? "bookings" : "bookings/me";
+            const url = user.role === "Admin" ? "/bookings" : "/bookings/me";
             
-            // Pass token in headers to fix 403 Forbidden
-            console.log("My Role is:", role);
-            console.log("Requesting URL:", url);
             const res = await API.get(url, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            const data = Array.isArray(res.data) ? res.data : res.data?.bookings || [];
-            setBookings(data);
+            const rawData = res.data;
+            const extractedBookings = Array.isArray(rawData) 
+                ? rawData 
+                : (rawData?.bookings || rawData?.data || []);
+
+            setBookings(extractedBookings);
         } catch (err) {
-            console.error("Fetch error:", err);
+            console.error("Fetch error details:", err.response?.data || err.message);
         } finally {
             setLoading(false);
         }
@@ -44,24 +45,16 @@ export default function BookingList() {
         fetchBookings();
     }, [fetchBookings]);
 
-    const handleAcceptBooking = async (id) => {
+    const handleAction = async (id, action) => {
         try {
             const token = localStorage.getItem("token");
-            await API.put(`bookings/accept/${id}`, {}, {
+            await API.put(`/bookings/${action}/${id}`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            fetchBookings();
-        } catch (err) { console.error("Accept error:", err); }
-    };
-
-    const handleRejectBooking = async (id) => {
-        try {
-            const token = localStorage.getItem("token");
-            await API.put(`bookings/reject/${id}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchBookings();
-        } catch (err) { console.error("Reject error:", err); }
+            fetchBookings(); 
+        } catch (err) {
+            console.error(`${action} error:`, err.response?.data || err.message);
+        }
     };
 
     if (loading) return <p className="text-center p-4">Loading Bookings...</p>;
@@ -69,32 +62,41 @@ export default function BookingList() {
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 p-4">
             {bookings.length === 0 ? (
-                <p className="text-center col-span-2 text-gray-500">No bookings found.</p>
+                <div className="text-center col-span-2 py-10">
+                    <p className="text-gray-500 text-lg">No bookings found.</p>
+                    <Button variant="outline" className="mt-2" onClick={fetchBookings}>Retry</Button>
+                </div>
             ) : (
                 bookings.map((booking) => (
                     <Card key={booking?._id || Math.random()} className="shadow-md rounded-2xl">
                         <CardHeader>
-                            <CardTitle>{booking?.vehicleName || "Vehicle"}</CardTitle>
+                            {/* Updated to check populated vehicle object */}
+                            <CardTitle>{booking?.vehicle?.name || "Vehicle"}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <p><strong>Customer:</strong> {booking?.customerName || "N/A"}</p>
+                            {/* FIX: Changed from booking.user to booking.customer */}
+                            <p><strong>Customer:</strong> {booking?.customer?.name || "N/A"}</p>
+                            
+                            {/* Added display for the required Reason field */}
+                            <p><strong>Reason:</strong> {booking?.bookingReason || "N/A"}</p>
+                            
                             <p>
                                 <strong>Status:</strong>{" "}
                                 <span className={
                                     booking?.status === "accepted" ? "text-green-600 font-bold" :
                                     booking?.status === "rejected" ? "text-red-600 font-bold" : "text-yellow-600 font-bold"
                                 }>
-                                    {booking?.status || "pending"}
+                                    {(booking?.status || "pending").toUpperCase()}
                                 </span>
                             </p>
                         </CardContent>
 
-                        {booking?.status === "pending" && userRole === "Admin" && (
+                        {userRole === "Admin" && booking?.status === "pending" && (
                             <CardFooter className="flex gap-2">
-                                <Button onClick={() => handleAcceptBooking(booking?._id)}>
+                                <Button className="flex-1" onClick={() => handleAction(booking?._id, 'accept')}>
                                     Accept
                                 </Button>
-                                <Button variant="destructive" onClick={() => handleRejectBooking(booking?._id)}>
+                                <Button className="flex-1" variant="destructive" onClick={() => handleAction(booking?._id, 'reject')}>
                                     Reject
                                 </Button>
                             </CardFooter>
