@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import VehicleCard from "../Vehicle/VehicleCard.jsx";
-import AddVehicle from "../Vehicle/VehicleForm.jsx";
-import BookingList from "../Booking/BookingList.jsx";
+import VehicleCard from "@/vehicle/VehicleCard.jsx";
+import AddVehicle from "@/vehicle/VehicleForm.jsx";
+import BookingList from "@/booking/BookingList.jsx";
 import socket from "../Services/socket";
 import API from "../Services/api"; // Added API import
-import { useAuthContext } from "../Context/authContext";
+import { useAuthContext } from "@/Context/authContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 

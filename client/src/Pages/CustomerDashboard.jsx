@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import BookVehicle from "../Booking/BookingForm.jsx";
-import BookingList from "../Booking/BookingList.jsx";
+import BookVehicle from "@/booking/BookingForm.jsx";
+import BookingList from "@/booking/BookingList.jsx";
 import socket from "../Services/socket.js";
-import { useAuthContext } from "../Context/authContext";
+import { useAuthContext } from "@/Context/authContext";
 import { Button } from "@/components/ui/button"; // Ensure you import your Button
 import { useNavigate } from "react-router-dom"; // Import navigate
 
