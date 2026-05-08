@@ -1,10 +1,11 @@
-// creating and exporting socket communication
 import { io } from "socket.io-client";
 
-const URL = "http://localhost:5000"; 
+const URL = "https://vehicle-management-nunj.onrender.com";
 
 const socket = io(URL, {
-    autoConnect: false,
+  autoConnect: false,
+  transports: ["websocket", "polling"], // important for Render
+  withCredentials: true
 });
 
 export default socket;
