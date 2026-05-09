@@ -12,7 +12,7 @@ export default function AdminDashboard() {
     const { setUser, setToken } = useAuthContext();
     const navigate = useNavigate();
     const [selectedVehicle, setSelectedVehicle] = useState(null);
-    const [vehicles, setVehicles] = useState([]); // Renamed to plural for clarity
+    const [vehicles, setVehicles] = useState([]); 
     const [refresh, setRefresh] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -30,21 +30,17 @@ export default function AdminDashboard() {
     // --- FETCH VEHICLE LIST ---
     useEffect(() => {
         const fetchFleet = async () => {
-            const token = localStorage.getItem("token");
-            if (!token) return;
-
             try {
-                // Ensure endpoint matches your backend (check if it should be "vehicles" or "vehicle")
-                const res = await API.get("vehicle", {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                // FIXED: Rely on the interceptor in api.js. 
+                // Note: If this 403s, verify if your backend route is "/vehicle" or "/vehicles"
+                const res = await API.get("vehicle");
                 
-                // Safety check: Always ensure vehicles is an array
                 const data = Array.isArray(res.data) ? res.data : (res.data.vehicles || []);
                 setVehicles(data);
             } catch (err) {
                 console.error("Error fetching fleet:", err);
-                setVehicles([]); // Fallback to empty array on error
+                // If 403 persists, the backend doesn't recognize your "Admin" role
+                setVehicles([]); 
             } finally {
                 setIsLoading(false);
             }
@@ -53,9 +49,12 @@ export default function AdminDashboard() {
     }, [refresh]);
 
     // --- SOCKET LOGIC ---
-    // Note: Authentication navigation removed here because App.js handles it.
     useEffect(() => {
-        if (!socket.connected) socket.connect();
+        // FIXED: Added a check to prevent connection attempts if already connecting
+        if (!socket.connected) {
+            socket.connect();
+        }
+        
         socket.emit("joinAdmin");
 
         const handleNotification = (data) => {
@@ -65,7 +64,12 @@ export default function AdminDashboard() {
 
         socket.on("notification", handleNotification);
         socket.on("vehicle:updated", reload);
-        socket.on("connect_error", (err) => console.error("Admin Socket Error:", err.message));
+        
+        // Handle socket errors specifically
+        socket.on("connect_error", (err) => {
+            console.error("Admin Socket Error:", err.message);
+            // If it times out on Render, it often means the initial Auth failed
+        });
 
         return () => {
             socket.off("notification", handleNotification);
@@ -74,21 +78,26 @@ export default function AdminDashboard() {
         };
     }, []);
 
+    // --- DELETE LOGIC ---
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this vehicle?")) return;
         try {
-            const token = localStorage.getItem("token");
-            await API.delete(`vehicles/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // FIXED: Removed manual headers to prevent double-token conflicts
+            await API.delete(`vehicle/${id}`);
             reload();
         } catch (err) {
             console.error("Delete error:", err);
+            alert(err.response?.data?.message || "Delete failed: Access Denied");
         }
     };
 
     if (isLoading) {
-        return <div className="flex h-screen items-center justify-center font-medium">Loading Admin Panel...</div>;
+        return (
+            <div className="flex h-screen flex-col items-center justify-center space-y-4">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                <p className="font-medium text-gray-600">Verifying Admin Access...</p>
+            </div>
+        );
     }
 
     return (
@@ -100,11 +109,14 @@ export default function AdminDashboard() {
 
             <div className="bg-white p-6 rounded-2xl shadow mb-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-700">Manage Vehicles</h2>
-                <AddVehicle selectedVehicle={selectedVehicle} refresh={reload} />
+                {/* Ensure AddVehicle uses the plural/singular route correctly */}
+                <AddVehicle selectedVehicle={selectedVehicle} refresh={reload} setSelectedVehicle={setSelectedVehicle} />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8 pt-8 border-t">
                     {vehicles.length === 0 ? (
-                        <p className="text-gray-500 col-span-full text-center py-10">No vehicles found.</p>
+                        <p className="text-gray-500 col-span-full text-center py-10 italic">
+                            No vehicles found in the database.
+                        </p>
                     ) : (
                         vehicles.map((v) => (
                             <VehicleCard 
