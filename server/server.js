@@ -10,7 +10,10 @@ const app = express();
 const server = http.createServer(app);
 
 const  io =  new Server(server, {
-    cors: {origin: "*"}
+    cors: {
+        origin: "https://vehicle-managementfrontend.onrender.com",
+        credentials: true,
+    }
 });
 
 //socket.io
@@ -18,7 +21,10 @@ const  io =  new Server(server, {
 require('./socket')(io);
 
 //middleware 
-app.use(cors());
+app.use(cors({
+    origin: "https://vehicle-managementfrontend.onrender.com",
+    credentials: true,
+}));
 app.use(express.json());
 //routes
 app.use("/api/auth", require("./routes/authRoutes"));
