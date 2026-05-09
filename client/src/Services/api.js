@@ -1,5 +1,4 @@
 import axios from "axios";
-import {io} from "socket.io-client";
 
 const BackenedBaseUrl = "https://vehicle-management-nunj.onrender.com";
 const APIBaseUrl = "https://vehicle-management-nunj.onrender.com/api/";
@@ -63,6 +62,4 @@ export const acceptBooking = (bookingId) =>{
 export const rejectBooking =(bookingId) =>{
     return API.put(`/bookings/reject/${bookingId}`);
 };
-
-export const socket = io(BackenedBaseUrl, {autoConnect: false});
 export default API;

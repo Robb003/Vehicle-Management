@@ -3,30 +3,37 @@ import BookVehicle from "@/booking/BookingForm.jsx";
 import BookingList from "@/booking/BookingList.jsx";
 import socket from "../Services/socket.js";
 import { useAuthContext } from "@/Context/authContext";
-import { Button } from "@/components/ui/button"; // Ensure you import your Button
-import { useNavigate } from "react-router-dom"; // Import navigate
+import { Button } from "@/components/ui/button"; 
+import { useNavigate } from "react-router-dom"; 
 
 export default function CustomerDashboard() {
     const { setUser, setToken } = useAuthContext();
-    const navigate = useNavigate(); // Initialize navigate
+    const navigate = useNavigate();
     const [refresh, setRefresh] = useState(false);
+    const [isLoading, setIsLoading] = useState(true); // Prevents white screen flicker
+
     const reload = () => setRefresh(prev => !prev);
 
-    // --- LOGOUT LOGIC ---
     const handleLogout = () => {
-        localStorage.clear(); // Clear storage
-        setUser(null);        // Clear React state (Triggers App.jsx redirect)
-        setToken(null);       // Clear Token state
-        socket.disconnect();  // Close socket connection
-        navigate("/login");   // Move to login page
+        socket.disconnect();
+        localStorage.clear();
+        setUser(null);
+        setToken(null);
+        navigate("/login", { replace: true });
     };
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
-        if (!storedUser) return;
+        
+        if (!storedUser) {
+            navigate("/login", { replace: true });
+            return;
+        }
 
         const user = JSON.parse(storedUser);
+        setIsLoading(false); // User exists, show the UI
 
+        // Only connect if not already connected
         if (!socket.connected) {
             socket.connect();
         }
@@ -44,18 +51,28 @@ export default function CustomerDashboard() {
             reload();
         };
 
+        // Listen for errors to prevent the "Throttling" loop
+        socket.on("connect_error", (err) => {
+            console.error("Socket Connection Error:", err.message);
+        });
+
         socket.on("notification", handleNotification);
         socket.on("vehicle:updated", handleVehicleUpdate);
 
         return () => {
+            socket.off("connect_error");
             socket.off("notification", handleNotification);
             socket.off("vehicle:updated", handleVehicleUpdate);
         };
-    }, []);
+    }, [navigate]);
+
+    // Show a loading state instead of a white page while checking auth
+    if (isLoading) {
+        return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    }
 
     return (
         <div className="min-h-screen bg-gray-100 p-6">
-            {/* --- TOP BAR WITH LOGOUT BUTTON --- */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800">Customer Dashboard</h1>
                 <Button onClick={handleLogout} variant="destructive">

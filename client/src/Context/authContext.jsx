@@ -9,37 +9,49 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const savedUser = localStorage.getItem("user");
-        const savedToken = localStorage.getItem("token");
-        const savedRole = localStorage.getItem("role");
+        const initializeAuth = () => {
+            const savedUser = localStorage.getItem("user");
+            const savedToken = localStorage.getItem("token");
+            const savedRole = localStorage.getItem("role");
 
-        if (savedUser && savedUser !== "undefined" && savedToken) {
-            try {
-                setUser(JSON.parse(savedUser));
-                setToken(savedToken);
-                setRole(savedRole);
-            } catch (err) {
-                console.error("Invalid JSON in localStorage", err);
-                localStorage.clear(); 
+            // Added check for "null" string which localStorage sometimes returns
+            if (savedUser && savedUser !== "undefined" && savedUser !== "null" && savedToken) {
+                try {
+                    setUser(JSON.parse(savedUser));
+                    setToken(savedToken);
+                    setRole(savedRole);
+                } catch (err) {
+                    console.error("Auth initialization failed:", err);
+                    localStorage.clear(); 
+                }
             }
-        }
-        setLoading(false);
+            setLoading(false);
+        };
+
+        initializeAuth();
     }, []);
 
-    // --- ADDED LOGOUT FUNCTION ---
     const logout = () => {
-        localStorage.clear(); // Clear all saved data
-        setUser(null);        // Reset states to trigger App.js redirects
+        localStorage.clear();
+        setUser(null);
         setToken(null);
         setRole(null);
+        // Do not call navigate here; App.jsx will see user is null and redirect
     };
 
     return (
         <AuthContext.Provider
-            // Include 'logout' in the value so components can use it
-            value={{ user, setUser, token, setToken, role, setRole, logout }}
+            value={{ user, setUser, token, setToken, role, setRole, logout, loading }}
         >
-            {!loading && children}
+            {/* 
+              This prevents the App from trying to route 
+              before we know if the user is logged in 
+            */}
+            {!loading ? children : (
+                <div className="flex h-screen items-center justify-center">
+                    Loading Session...
+                </div>
+            )}
         </AuthContext.Provider>
     );
 };
