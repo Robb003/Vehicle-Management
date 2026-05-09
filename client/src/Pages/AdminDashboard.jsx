@@ -12,9 +12,9 @@ export default function AdminDashboard() {
     const { setUser, setToken } = useAuthContext();
     const navigate = useNavigate();
     const [selectedVehicle, setSelectedVehicle] = useState(null);
-    const [vehicle, setVehicle] = useState([]); 
+    const [vehicles, setVehicles] = useState([]); // Renamed to plural for clarity
     const [refresh, setRefresh] = useState(false);
-    const [isLoading, setIsLoading] = useState(true); // Added to prevent white screen
+    const [isLoading, setIsLoading] = useState(true);
 
     const reload = () => setRefresh(prev => !prev);
 
@@ -34,29 +34,27 @@ export default function AdminDashboard() {
             if (!token) return;
 
             try {
+                // Ensure endpoint matches your backend (check if it should be "vehicles" or "vehicle")
                 const res = await API.get("vehicle", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                setVehicle(Array.isArray(res.data) ? res.data : res.data.vehicles || []);
+                
+                // Safety check: Always ensure vehicles is an array
+                const data = Array.isArray(res.data) ? res.data : (res.data.vehicles || []);
+                setVehicles(data);
             } catch (err) {
                 console.error("Error fetching fleet:", err);
+                setVehicles([]); // Fallback to empty array on error
+            } finally {
+                setIsLoading(false);
             }
         };
         fetchFleet();
     }, [refresh]);
 
-    // --- AUTH & SOCKET LOGIC ---
+    // --- SOCKET LOGIC ---
+    // Note: Authentication navigation removed here because App.js handles it.
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        
-        if (!storedUser) {
-            navigate("/login", { replace: true });
-            return;
-        }
-
-        const user = JSON.parse(storedUser);
-        setIsLoading(false); // Valid user found, show UI
-
         if (!socket.connected) socket.connect();
         socket.emit("joinAdmin");
 
@@ -74,7 +72,7 @@ export default function AdminDashboard() {
             socket.off("vehicle:updated", reload);
             socket.off("connect_error");
         };
-    }, [navigate]);
+    }, []);
 
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this vehicle?")) return;
@@ -90,7 +88,7 @@ export default function AdminDashboard() {
     };
 
     if (isLoading) {
-        return <div className="flex h-screen items-center justify-center">Loading Admin Panel...</div>;
+        return <div className="flex h-screen items-center justify-center font-medium">Loading Admin Panel...</div>;
     }
 
     return (
@@ -105,10 +103,10 @@ export default function AdminDashboard() {
                 <AddVehicle selectedVehicle={selectedVehicle} refresh={reload} />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8 pt-8 border-t">
-                    {vehicle.length === 0 ? (
-                        <p className="text-gray-500 col-span-full text-center">No vehicles found.</p>
+                    {vehicles.length === 0 ? (
+                        <p className="text-gray-500 col-span-full text-center py-10">No vehicles found.</p>
                     ) : (
-                        vehicle.map((v) => (
+                        vehicles.map((v) => (
                             <VehicleCard 
                                 key={v._id || v.id}
                                 vehicle={v} 
