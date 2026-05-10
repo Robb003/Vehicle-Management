@@ -14,33 +14,43 @@ export default function BookVehicle({ onAdd }) {
     const [endDate, setEndDate] = useState(null);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
     const [bookingReason, setBookingReason] = useState("");
-    const [loading, setLoading] = useState(true); // Start as true for initial fetch
-    const [submitLoading, setSubmitLoading] = useState(false); // Separate state for button
+    const [loading, setLoading] = useState(true); 
+    const [submitLoading, setSubmitLoading] = useState(false); 
+
+    // Fetch vehicles and user's specific bookings
+    const fetchData = async () => {
+        try {
+            // FIXED: Added leading slash for consistent API routing
+            const v = await API.get("/vehicle");
+            setVehicles(v.data);
+
+            const b = await API.get("/bookings/me");
+            setBookings(Array.isArray(b.data) ? b.data : b.data.bookings || []);
+        } catch (err) {
+            console.error("Fetch error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Fetch vehicles (Public/Protected)
-                const v = await API.get("vehicle");
-                setVehicles(v.data);
-
-                // IMPORTANT: Fetch ONLY 'me' bookings. 
-                // Getting ALL bookings requires Admin role and causes 403/404 for customers.
-                const b = await API.get("bookings/me");
-                setBookings(Array.isArray(b.data) ? b.data : b.data.bookings || []);
-            } catch (err) {
-                console.error("Fetch error:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
+
+        // SOCKET: Listen for global vehicle updates (e.g., when Admin accepts a booking)
+        // This ensures the "Available" status changes to "Booked" instantly on this screen
+        socket.on("vehicleUpdated", (updatedVehicle) => {
+            setVehicles((prev) => 
+                prev.map(v => v._id === updatedVehicle._id ? updatedVehicle : v)
+            );
+        });
+
+        return () => socket.off("vehicleUpdated");
     }, []);
 
-    // Check if THIS specific customer already has a pending/accepted booking for this vehicle
+    // Check if THIS specific customer already sent a request
     const isBookedByMe = (vehicleId) => {
         return bookings.some(
-            b => b.vehicle === vehicleId && b.status !== "rejected"
+            b => (b.vehicle?._id === vehicleId || b.vehicle === vehicleId) && b.status === "pending"
         );
     };
 
@@ -51,37 +61,37 @@ export default function BookVehicle({ onAdd }) {
         if (!startDate || !endDate || !bookingReason) {
             return alert("All fields are required");
         }
-        if (!user) {
-            return alert("User not logged in");
-        }
+        if (!user) return alert("User not logged in");
 
         setSubmitLoading(true);
         try {
-            await API.post("bookings", {
+            // 1. Save to Database via REST API
+            await API.post("/bookings", {
                 vehicle: selectedVehicle._id,
                 startDate: startDate.toISOString(),
                 endDate: endDate.toISOString(),
                 bookingReason: bookingReason
             });
 
-            // Send booking via socket
+            // 2. Notify Admin via Socket instantly
             socket.emit("sendBooking", {
                 customerId: user.id || user._id,
                 vehicleId: selectedVehicle._id,
                 startDate,
-                endDate
+                endDate,
+                bookingReason
             });
 
             alert("Booking successfully made!");
             
-            // Reset form
+            // 3. Reset form and refresh data
             setStartDate(null);
             setEndDate(null);
             setBookingReason("");
             setSelectedVehicle(null);
             
-            // Refresh parent dashboard
-            onAdd(); 
+            fetchData(); // Local refresh
+            if (onAdd) onAdd(); // Dashboard refresh
         } catch (err) {
             alert(err.response?.data?.message || "Failed to add booking");
         } finally {
@@ -96,7 +106,10 @@ export default function BookVehicle({ onAdd }) {
             {!selectedVehicle && (
                 <div className="grid md:grid-cols-3 gap-6">
                     {vehicles.map(vehicle => {
-                        const alreadyBooked = isBookedByMe(vehicle._id);
+                        const myRequestPending = isBookedByMe(vehicle._id);
+                        // Check if the car is generally Booked (by anyone)
+                        // Note: Using lowercase check to be safe
+                        const isGloballyBooked = vehicle.status?.toLowerCase() === "booked";
 
                         return (
                             <Card key={vehicle._id} className="p-4 shadow-md border-t-4 border-t-blue-500">
@@ -108,15 +121,23 @@ export default function BookVehicle({ onAdd }) {
                                     <p className="font-bold text-lg text-blue-600">
                                         KES {vehicle.pricePerDay} / day
                                     </p>
-                                    <p className={`text-sm font-semibold ${alreadyBooked ? "text-orange-500" : "text-green-600"}`}>
-                                        {alreadyBooked ? "You have a pending request" : "Available"}
+                                    
+                                    {/* STATUS LOGIC */}
+                                    <p className={`text-sm font-semibold ${
+                                        isGloballyBooked ? "text-red-500" : 
+                                        myRequestPending ? "text-orange-500" : "text-green-600"
+                                    }`}>
+                                        {isGloballyBooked ? "Currently Booked" : 
+                                         myRequestPending ? "Pending Approval" : "Available"}
                                     </p>
+
                                     <Button
-                                        disabled={alreadyBooked}
+                                        disabled={isGloballyBooked || myRequestPending}
                                         onClick={() => setSelectedVehicle(vehicle)}
                                         className="w-full mt-4"
                                     >
-                                        {alreadyBooked ? "Request Sent" : "Book Now"}
+                                        {isGloballyBooked ? "Not Available" : 
+                                         myRequestPending ? "Request Sent" : "Book Now"}
                                     </Button>
                                 </CardContent>
                             </Card>
@@ -125,6 +146,7 @@ export default function BookVehicle({ onAdd }) {
                 </div>
             )}
 
+            {/* Selection Form remains the same */}
             {selectedVehicle && (
                 <Card className="w-full max-w-md mx-auto p-4 shadow-lg border-2 border-blue-100">
                     <CardHeader>
@@ -136,7 +158,7 @@ export default function BookVehicle({ onAdd }) {
                             <DatePicker
                                 selected={startDate}
                                 onChange={setStartDate}
-                                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
+                                className="w-full border p-2 rounded outline-none"
                                 minDate={new Date()}
                             />
                         </div>
@@ -146,7 +168,7 @@ export default function BookVehicle({ onAdd }) {
                             <DatePicker
                                 selected={endDate}
                                 onChange={setEndDate}
-                                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
+                                className="w-full border p-2 rounded outline-none"
                                 minDate={startDate || new Date()}
                             />
                         </div>
@@ -161,18 +183,10 @@ export default function BookVehicle({ onAdd }) {
                         </div>
 
                         <div className="flex gap-2 pt-4">
-                            <Button
-                                variant="outline"
-                                onClick={() => setSelectedVehicle(null)}
-                                className="flex-1"
-                            >
+                            <Button variant="outline" onClick={() => setSelectedVehicle(null)} className="flex-1">
                                 Back
                             </Button>
-                            <Button
-                                onClick={handleSubmit}
-                                className="flex-1"
-                                disabled={submitLoading}
-                            >
+                            <Button onClick={handleSubmit} className="flex-1" disabled={submitLoading}>
                                 {submitLoading ? "Booking..." : "Confirm Booking"}
                             </Button>
                         </div>

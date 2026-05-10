@@ -18,6 +18,8 @@ const io = new Server(server, {
     transports: ["websocket", "polling"] // Allow both, but client should prefer websocket
 });
 
+app.set("io", io);
+
 // Attach socket logic
 require('./socket')(io);
 

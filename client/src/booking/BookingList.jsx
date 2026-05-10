@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import API from "../Services/api";
+import socket from "../Services/socket"; // Import your socket instance
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -12,21 +13,14 @@ export default function BookingList() {
         try {
             setLoading(true);
             const userData = localStorage.getItem("user");
-            const token = localStorage.getItem("token");
-
-            if (!userData || !token) {
-                setLoading(false);
-                return;
-            }
+            if (!userData) return;
             
             const user = JSON.parse(userData);
             setUserRole(user.role || "");
 
+            // Fetch based on role
             const url = user.role === "Admin" ? "/bookings" : "/bookings/me";
-            
-            const res = await API.get(url, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await API.get(url);
 
             const rawData = res.data;
             const extractedBookings = Array.isArray(rawData) 
@@ -35,7 +29,7 @@ export default function BookingList() {
 
             setBookings(extractedBookings);
         } catch (err) {
-            console.error("Fetch error details:", err.response?.data || err.message);
+            console.error("Fetch error:", err.message);
         } finally {
             setLoading(false);
         }
@@ -43,18 +37,38 @@ export default function BookingList() {
 
     useEffect(() => {
         fetchBookings();
-    }, [fetchBookings]);
 
-    const handleAction = async (id, action) => {
-        try {
-            const token = localStorage.getItem("token");
-            await API.put(`/bookings/${action}/${id}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchBookings(); 
-        } catch (err) {
-            console.error(`${action} error:`, err.response?.data || err.message);
-        }
+        // SOCKET LISTENER: Listen for updates from the Admin (if user is a Customer)
+        // or from the Backend (if user is an Admin)
+        socket.on("bookingUpdated", (updatedBooking) => {
+            setBookings((prev) => 
+                prev.map(b => b._id === updatedBooking._id ? updatedBooking : b)
+            );
+        });
+
+        // Listen for brand new bookings (for Admins)
+        socket.on("notification", () => {
+            if (userRole === "Admin") fetchBookings();
+        });
+
+        return () => {
+            socket.off("bookingUpdated");
+            socket.off("notification");
+        };
+    }, [fetchBookings, userRole]);
+
+    // HANDLE ACTION: Uses Sockets to ensure real-time notification
+    const handleAction = (id, action) => {
+        const eventName = action === 'accept' ? 'acceptBooking' : 'rejectBooking';
+        
+        // Use the Socket instead of a direct API PUT request
+        // This triggers the backend logic we wrote that updates the DB AND notifies the customer
+        socket.emit(eventName, { bookingId: id });
+        
+        // Optimistically update the UI status while the server processes
+        setBookings(prev => prev.map(b => 
+            b._id === id ? { ...b, status: action === 'accept' ? 'accepted' : 'rejected' } : b
+        ));
     };
 
     if (loading) return <p className="text-center p-4">Loading Bookings...</p>;
@@ -68,18 +82,13 @@ export default function BookingList() {
                 </div>
             ) : (
                 bookings.map((booking) => (
-                    <Card key={booking?._id || Math.random()} className="shadow-md rounded-2xl">
+                    <Card key={booking?._id} className="shadow-md rounded-2xl">
                         <CardHeader>
-                            {/* Updated to check populated vehicle object */}
                             <CardTitle>{booking?.vehicle?.name || "Vehicle"}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            {/* FIX: Changed from booking.user to booking.customer */}
                             <p><strong>Customer:</strong> {booking?.customer?.name || "N/A"}</p>
-                            
-                            {/* Added display for the required Reason field */}
                             <p><strong>Reason:</strong> {booking?.bookingReason || "N/A"}</p>
-                            
                             <p>
                                 <strong>Status:</strong>{" "}
                                 <span className={
@@ -91,6 +100,7 @@ export default function BookingList() {
                             </p>
                         </CardContent>
 
+                        {/* Admin Controls */}
                         {userRole === "Admin" && booking?.status === "pending" && (
                             <CardFooter className="flex gap-2">
                                 <Button className="flex-1" onClick={() => handleAction(booking?._id, 'accept')}>
