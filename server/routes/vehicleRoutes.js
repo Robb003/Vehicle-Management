@@ -4,7 +4,7 @@ const { protect, authorize} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 router.post("/", protect, authorize(["Admin"]), addVehicle);
-router.get("/", protect, getAllVehicles);
+router.get("/", protect, authorize(["Admin", "Customer"]), getAllVehicles);
 router.put("/:id", protect, authorize(["Admin"]), updateVehicle);
 router.delete("/:id", protect, authorize(["Admin"]), deleteVehicle);
 

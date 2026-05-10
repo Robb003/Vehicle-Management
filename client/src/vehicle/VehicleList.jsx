@@ -9,7 +9,7 @@ export default function VehicleList() {
     const fetchVehicles = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await API.get("vehicles", {
+            const res = await API.get("vehicle", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
