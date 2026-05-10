@@ -7,7 +7,7 @@ const socket = io(URL, {
   autoConnect: false,
   // For Render, it's often more stable to start with 'websocket' only
   // because they lack sticky sessions for polling upgrades
-  transports: ["websocket"], 
+  transports: ["polling", "websocket"], 
   withCredentials: true,
   reconnectionAttempts: 5,
   timeout: 20000, // Longer timeout for Render "cold starts"
